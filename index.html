@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#050b0c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="NEXUS FRONT — a pixel-art sci-fi real-time strategy game built for touch." />
+  <title>NEXUS FRONT // Tactical RTS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%2383ffd9' d='M16 1 29 8v16L16 31 3 24V8z'/%3E%3Cpath fill='%2306100f' d='M16 6 24 10v12l-8 4-8-4V10z'/%3E%3Cpath fill='%2383ffd9' d='m16 10 5 4-5 8-5-8z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="Tactical battlefield"></canvas>
+    <div class="grade" aria-hidden="true"></div>
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <header id="topHud" class="top-hud is-muted" aria-label="Mission status">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="brand-mark-core"></span>
+        </div>
+        <div class="brand-copy">
+          <div class="brand-title">NEXUS <span>FRONT</span></div>
+          <div class="brand-sub">SECTOR K-7 // TITAN</div>
+        </div>
+      </div>
+
+      <div class="mission-strip" id="missionStrip">
+        <span class="live-dot" aria-hidden="true"></span>
+        <div class="mission-copy">
+          <span class="micro-label">PRIMARY OBJECTIVE</span>
+          <strong id="objectiveText">DESTROY ASHEN NEXUS</strong>
+        </div>
+        <div class="objective-track" aria-hidden="true"><i id="objectiveBar"></i></div>
+      </div>
+
+      <div class="top-actions">
+        <div class="stat-chip" title="Titanium credits">
+          <span class="chip-glyph credit-glyph" aria-hidden="true"></span>
+          <span class="stat-copy"><span class="stat-label">TITANIUM</span><strong id="credits">350</strong></span>
+        </div>
+        <div class="stat-chip threat-chip" id="threatChip" title="Time until hostile assault">
+          <span class="chip-glyph threat-glyph" aria-hidden="true"></span>
+          <span class="stat-copy"><span class="stat-label">THREAT</span><strong id="threatTimer">00:55</strong></span>
+        </div>
+        <div class="top-button-row">
+          <button class="icon-button" id="btnSound" type="button" aria-label="Toggle audio" title="Audio">
+            <span id="soundIcon" class="audio-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          </button>
+          <button class="icon-button" id="btnPause" type="button" aria-label="Pause mission" title="Pause">
+            <span class="pause-glyph" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div id="alertTicker" class="alert-ticker" role="status" aria-live="polite">
+      <span class="ticker-tag">UPLINK</span>
+      <span id="tickerText">COMMAND LINK ESTABLISHED</span>
+    </div>
+
+    <div id="toastStack" class="toast-stack" aria-live="polite"></div>
+
+    <div id="buildBanner" class="build-banner" hidden>
+      <span class="build-banner-icon" aria-hidden="true"></span>
+      <div class="build-banner-copy">
+        <span class="micro-label">DEPLOYMENT MODE</span>
+        <strong id="buildBannerText">TAP A VALID GRID SITE</strong>
+      </div>
+      <button id="cancelBuild" class="mini-button" type="button">ABORT <kbd>ESC</kbd></button>
+    </div>
+
+    <section id="commandDock" class="command-dock is-muted" aria-label="Command console">
+      <div class="dock-left">
+        <div id="selectionCard" class="selection-card">
+          <div class="selection-topline">
+            <span id="selEyebrow" class="micro-label">NO SELECTION</span>
+            <span id="selCount" class="selection-count">--</span>
+          </div>
+          <div class="selection-body">
+            <canvas id="selIcon" width="72" height="72" aria-hidden="true"></canvas>
+            <div class="selection-copy">
+              <strong id="selName">TACTICAL LINK</strong>
+              <div class="hp-track" aria-hidden="true"><i id="selHp"></i></div>
+              <span id="selMeta">STANDBY</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="minimapWrap" class="minimap-wrap" type="button" aria-label="Open tactical map">
+          <canvas id="minimap" width="252" height="252"></canvas>
+          <span class="minimap-corner tl"></span><span class="minimap-corner tr"></span>
+          <span class="minimap-corner bl"></span><span class="minimap-corner br"></span>
+          <span class="minimap-label">TACMAP</span>
+          <span class="minimap-sweep" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div class="dock-main">
+        <div class="dock-topline">
+          <div class="dock-tabs" role="tablist" aria-label="Command categories">
+            <button class="dock-tab is-active" data-tab="build" type="button" role="tab" aria-selected="true"><span>01</span>BUILD</button>
+            <button class="dock-tab" data-tab="train" type="button" role="tab" aria-selected="false"><span>02</span>TRAIN</button>
+            <button class="dock-tab" data-tab="army" type="button" role="tab" aria-selected="false"><span>03</span>ARMY</button>
+          </div>
+          <div id="dockHint" class="dock-hint">ESTABLISH A BARRACKS TO FIELD INFANTRY</div>
+        </div>
+        <div id="commandCards" class="command-cards" role="group" aria-label="Commands"></div>
+      </div>
+    </section>
+
+    <div id="menu" class="screen menu-screen">
+      <div class="menu-grid">
+        <section class="menu-main">
+          <div class="menu-eyebrow"><span class="signal-pin"></span> TACTICAL COMMAND SIM // 2187</div>
+          <h1 class="game-logo" aria-label="Nexus Front">
+            <span class="logo-line">NEXUS</span>
+            <span class="logo-line logo-accent">FRONT</span>
+          </h1>
+          <p class="menu-tagline">HOLD THE LINE.<br /><em>BURN THE NEXUS.</em></p>
+
+          <div class="mission-card">
+            <div class="mission-card-head">
+              <span class="micro-label">OPERATION</span>
+              <strong>EMBER WAKE</strong>
+              <span class="mission-threat">THREAT <b>SEVERE</b></span>
+            </div>
+            <p>An Ashen Legion strike cell has seized the K-7 relay. Establish a forward base, mine titanite, and level their nexus before the orbital window closes.</p>
+            <div class="mission-data">
+              <span><i>SECTOR</i>K-7 / TITAN</span>
+              <span><i>FORCE</i>1ST EXO</span>
+              <span><i>WINDOW</i>NO EXTRACTION</span>
+            </div>
+          </div>
+
+          <div class="menu-actions">
+            <button id="btnDeploy" class="deploy-button" type="button">
+              <span class="deploy-arrow" aria-hidden="true"></span>
+              <span class="deploy-copy"><small>ODST CLEARANCE VERIFIED</small>INITIATE DROP</span>
+            </button>
+            <button id="btnManual" class="ghost-button" type="button">OPS MANUAL</button>
+          </div>
+
+          <div class="menu-foot">
+            <span><kbd>WASD</kbd> PAN</span>
+            <span><kbd>WHEEL</kbd> ZOOM</span>
+            <span class="headphones">HEADPHONES RECOMMENDED</span>
+          </div>
+        </section>
+
+        <aside class="menu-side" aria-label="Operation telemetry">
+          <div class="side-panel telemetry-panel">
+            <div class="panel-head"><span>LIVE FEED</span><span class="blink">REC</span></div>
+            <div class="radar">
+              <div class="radar-ring r1"></div>
+              <div class="radar-ring r2"></div>
+              <div class="radar-ring r3"></div>
+              <div class="radar-cross"></div>
+              <div class="radar-sweep"></div>
+              <i class="radar-blip b1"></i><i class="radar-blip b2"></i><i class="radar-blip hostile b3"></i>
+              <span class="radar-label n">N</span><span class="radar-label e">E</span><span class="radar-label s">S</span><span class="radar-label w">W</span>
+            </div>
+            <div class="telemetry-row"><span>LINK</span><b class="ok">SECURE</b></div>
+            <div class="telemetry-row"><span>UPLINK</span><b>SATCOM 04</b></div>
+            <div class="telemetry-row"><span>SOLAR</span><b>0430 HRS</b></div>
+          </div>
+          <div class="side-panel intel-panel">
+            <div class="panel-head"><span>FORCE COMPOSITION</span><span>01</span></div>
+            <div class="intel-row"><span class="intel-mark">A</span><div><b>AEGIS COMMAND</b><i>MOBILE HQ</i></div><span class="intel-val">01</span></div>
+            <div class="intel-row"><span class="intel-mark">H</span><div><b>HAULER</b><i>RESOURCE</i></div><span class="intel-val">02</span></div>
+            <div class="intel-row"><span class="intel-mark">R</span><div><b>RIFLEMAN</b><i>INFANTRY</i></div><span class="intel-val">02</span></div>
+            <div class="intel-row hostiles"><span class="intel-mark">X</span><div><b>ASHEN LEGION</b><i>HOSTILE</i></div><span class="intel-val">22+</span></div>
+          </div>
+        </aside>
+      </div>
+      <div class="menu-corner c1"></div><div class="menu-corner c2"></div>
+      <div class="menu-corner c3"></div><div class="menu-corner c4"></div>
+    </div>
+
+    <div id="manual" class="screen manual-screen" hidden>
+      <div class="manual-panel">
+        <div class="manual-head">
+          <div><span class="micro-label">FIELD DOCUMENT 12-A</span><h2>OPS MANUAL</h2></div>
+          <button id="btnCloseManual" class="icon-button" type="button" aria-label="Close manual">×</button>
+        </div>
+        <div class="manual-grid">
+          <article><span class="manual-index">01</span><h3>BUILD</h3><p>Tap <b>BUILD</b>, choose a structure, then tap a glowing grid site near your base. Structures require a chain link to command.</p></article>
+          <article><span class="manual-index">02</span><h3>HARVEST</h3><p>Haulers automatically cycle titanite crystals back to the Aegis. Train more haulers to accelerate production.</p></article>
+          <article><span class="manual-index">03</span><h3>COMMAND</h3><p>Tap units to select. Drag open ground to pan. Tap terrain to move, or tap a hostile to focus fire. Use <b>ALL</b> to rally your army.</p></article>
+          <article><span class="manual-index">04</span><h3>DESTROY</h3><p>Push north through the badlands. Turrets, riflemen, and Scorpion tanks will break the Ashen Nexus. Protect the Aegis at all costs.</p></article>
+        </div>
+        <div class="manual-foot">
+          <span><kbd>TAP</kbd> SELECT / COMMAND</span>
+          <span><kbd>DRAG</kbd> PAN MAP</span>
+          <span><kbd>PINCH</kbd> ZOOM</span>
+          <span><kbd>ESC</kbd> CANCEL</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="pauseScreen" class="screen pause-screen" hidden>
+      <div class="pause-panel">
+        <span class="micro-label">TACTICAL HOLD</span>
+        <h2>MISSION PAUSED</h2>
+        <p>The combat clock and all hostile movement have been suspended.</p>
+        <div class="pause-actions">
+          <button id="btnResume" class="deploy-button compact" type="button"><span class="deploy-copy"><small>RETURN TO FIELD</small>RESUME</span></button>
+          <button id="btnRestart" class="ghost-button" type="button">RESTART OP</button>
+          <button id="btnTitle" class="ghost-button" type="button">ABORT TO TITLE</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="endScreen" class="screen end-screen" hidden>
+      <div class="end-panel">
+        <div class="end-stamp" id="endStamp">OPERATION COMPLETE</div>
+        <h2 id="endTitle">NEXUS BREACHED</h2>
+        <p id="endCopy">The Ashen command node is ash. K-7 is ours.</p>
+        <div class="end-stats">
+          <div><span>MISSION TIME</span><b id="statTime">00:00</b></div>
+          <div><span>HOSTILES DOWN</span><b id="statKills">0</b></div>
+          <div><span>UNITS FIELDED</span><b id="statUnits">0</b></div>
+          <div><span>TITANIUM MINED</span><b id="statMined">0</b></div>
+        </div>
+        <button id="btnRedeploy" class="deploy-button compact" type="button"><span class="deploy-arrow" aria-hidden="true"></span><span class="deploy-copy"><small>RESET SIMULATION</small>REDEPLOY</span></button>
+      </div>
+    </div>
+
+    <div id="mapOverlay" class="screen map-screen" hidden>
+      <div class="map-overlay-panel">
+        <div class="map-overlay-head"><span class="micro-label">SECTOR K-7 // TACTICAL OVERVIEW</span><button id="btnCloseMap" class="icon-button" type="button" aria-label="Close tactical map">×</button></div>
+        <canvas id="bigmap" width="720" height="720"></canvas>
+        <div class="map-overlay-legend"><span><i class="dot friendly"></i> FRIENDLY</span><span><i class="dot hostile"></i> HOSTILE</span><span><i class="dot crystal"></i> TITANITE</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
